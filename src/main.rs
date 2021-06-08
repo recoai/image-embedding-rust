@@ -1,6 +1,9 @@
+mod models;
+
 use clap::{AppSettings, Clap};
 use std::error::Error;
 use tract_onnx::prelude::*;
+use std::time::Instant;
 
 #[derive(Clap, Debug)]
 struct Image {
@@ -42,6 +45,7 @@ fn inspect_model(opts: Opts) -> Result<(), Box<dyn Error>> {
 
 fn embed(opts: &Opts, image_opt: &Image) -> Result<(), Box<dyn Error>> {
     let image_size = image_opt.image_size;
+    let start = Instant::now();
     let model = tract_onnx::onnx()
         .model_for_path(opts.model_path.clone())?
         .with_input_fact(
@@ -51,6 +55,7 @@ fn embed(opts: &Opts, image_opt: &Image) -> Result<(), Box<dyn Error>> {
         .with_output_names(vec![image_opt.layer_name.clone()])?
         .into_optimized()?
         .into_runnable()?;
+    println!("Model loaded in {:?} seconds", start.elapsed().as_millis() as f64 / 1000.0);
 
     let image = image::open(&image_opt.image_path).unwrap().to_rgb8();
     let resized = image::imageops::resize(
@@ -75,10 +80,13 @@ fn embed(opts: &Opts, image_opt: &Image) -> Result<(), Box<dyn Error>> {
     };
 
     // run the model on the input
+    let start = Instant::now();
     let result = model.run(tvec!(image))?;
+    println!("Predicted in {:?} seconds", start.elapsed().as_millis() as f64 / 1000.0);
+
     let best: Vec<_> = result[0].to_array_view::<f32>()?.iter().cloned().collect();
 
-    println!("{:?}", best);
+    println!("Layer size {:?}", best.len());
     Ok(())
 }
 

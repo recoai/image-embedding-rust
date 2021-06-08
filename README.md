@@ -10,3 +10,4 @@ cargo run -- --model-path mobilenetv2-7.onnx embed --normalize --image-size 224 
 ```
 
 It should print out the embedding for the image (1280 floats).
+
