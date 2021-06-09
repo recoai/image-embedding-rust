@@ -1,5 +1,7 @@
+use crate::image_transform::pipeline::{
+    ImageSize, MeanStdNormalization, ResizeRGBImage, ToArray, ToTensor, TransformationPipeline,
+};
 use crate::models::{ModelArchitecture, ModelConfig};
-use crate::image_transform::pipeline::{TransformationPipeline, ResizeRGBImage, ToArray, MeanStdNormalization, ToTensor, ImageSize};
 use image::imageops::FilterType;
 
 pub fn load_model_config(model: ModelArchitecture) -> ModelConfig {

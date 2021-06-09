@@ -1,16 +1,18 @@
 use std::fs;
-use std::path::Path;
 use std::io::Write;
+use std::path::Path;
 
 pub fn remove_non_alphanum(s: &String) -> String {
-    let s_new: String = s.chars()
+    let s_new: String = s
+        .chars()
         .map(|x| match x {
             '0'..='9' => x,
             'A'..='Z' => x.to_ascii_lowercase(),
             'a'..='z' => x,
             ' ' => '_',
-            _ => ' '
-        }).collect();
+            _ => ' ',
+        })
+        .collect();
     s_new.replace(" ", "_")
 }
 
@@ -25,10 +27,7 @@ pub fn save_file_get(url: &str, path: &str) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let mut response = client
-        .get(url)
-        .send()
-        .map_err(|e| e.to_string())?;
+    let mut response = client.get(url).send().map_err(|e| e.to_string())?;
 
     let status = response.status();
     if !status.is_success() {
