@@ -35,6 +35,24 @@ pub struct TransformationPipeline {
     pub steps: Vec<Box<dyn GenericTransform>>,
 }
 
+impl TransformationPipeline {
+    pub fn transform_image(&self, image: RgbImage) -> Result<Tensor, &'static str> {
+        let mut result = ImageTransformResult::RgbImage(image.clone());
+
+        for step in &self.steps {
+            result = step.transform(result)?;
+        }
+
+        let to_tensor = ToTensor {};
+        result = to_tensor.transform(result)?;
+
+        match result {
+            ImageTransformResult::Tensor(t) => Ok(t),
+            _ => Err("Should be converted to tensor already")
+        }
+    }
+}
+
 pub trait GenericTransform {
     fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str>;
 }
@@ -153,21 +171,7 @@ impl GenericTransform for ToArray {
     }
 }
 
-pub fn run_pipeline(pipeline: &TransformationPipeline, image: RgbImage) -> Result<Tensor, &'static str> {
-    let mut result = ImageTransformResult::RgbImage(image.clone());
 
-    for step in &pipeline.steps {
-        result = step.transform(result)?;
-    }
-
-    let to_tensor = ToTensor{};
-    result = to_tensor.transform(result)?;
-
-    match result {
-        ImageTransformResult::Tensor(t) => Ok(t),
-        _ => Err("Should be converted to tensor already")
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -176,14 +180,32 @@ mod tests {
     use crate::image_transform::pipeline::{ImageSize, ResizeRGBImage, TransformationPipeline};
 
     use super::*;
+    use crate::image_transform::functions::read_rgb_image;
 
     #[test]
-    fn test_pipeline() {
+    fn test_resize() {
         let pipeline = TransformationPipeline {
             steps: vec![
-                Box::new(ResizeRGBImage{ image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
+                Box::new(ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
                 Box::new(ToTensor {})
             ]
         };
+        let image = read_rgb_image("images/cat.jpeg");
+        let result = pipeline.transform_image(image).expect("Cannot transform image");
+        assert_eq!(result.shape(), &[1, 3, 224, 224]);
+    }
+
+    #[test]
+    fn test_resize_permute() {
+        let pipeline = TransformationPipeline {
+            steps: vec![
+                Box::new(ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
+                Box::new(ToTensor {}),
+                Box::new(Transpose { axes: [0, 2, 3, 1] })
+            ]
+        };
+        let image = read_rgb_image("images/cat.jpeg");
+        let result = pipeline.transform_image(image).expect("Cannot transform image");
+        assert_eq!(result.shape(), &[1, 224, 224, 3]);
     }
 }
