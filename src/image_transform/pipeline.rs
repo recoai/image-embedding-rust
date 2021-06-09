@@ -1,12 +1,12 @@
 use std::error::Error;
 
-use image::{ImageBuffer, Rgb, RgbImage};
-use image::imageops::{FilterType, resize};
-use tract_onnx::prelude::{Tensor, tract_ndarray};
-use tract_onnx::prelude::tract_ndarray::Array4;
-use tract_onnx::tract_core::ndarray::Array;
-use crate::image_transform::pipeline::tract_ndarray::Ix4;
 use crate::image_transform::functions::image_to_tensor;
+use crate::image_transform::pipeline::tract_ndarray::Ix4;
+use image::imageops::{resize, FilterType};
+use image::{ImageBuffer, Rgb, RgbImage};
+use tract_onnx::prelude::tract_ndarray::Array4;
+use tract_onnx::prelude::{tract_ndarray, Tensor};
+use tract_onnx::tract_core::ndarray::Array;
 
 pub struct ImageSize {
     pub width: usize,
@@ -36,7 +36,7 @@ pub struct TransformationPipeline {
 }
 
 impl TransformationPipeline {
-    pub fn transform_image(&self, image: RgbImage) -> Result<Tensor, &'static str> {
+    pub fn transform_image(&self, image: &RgbImage) -> Result<Tensor, &'static str> {
         let mut result = ImageTransformResult::RgbImage(image.clone());
 
         for step in &self.steps {
@@ -48,7 +48,7 @@ impl TransformationPipeline {
 
         match result {
             ImageTransformResult::Tensor(t) => Ok(t),
-            _ => Err("Should be converted to tensor already")
+            _ => Err("Should be converted to tensor already"),
         }
     }
 }
@@ -65,14 +65,13 @@ pub struct ResizeRGBImage {
 impl GenericTransform for ResizeRGBImage {
     fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str> {
         match input {
-            ImageTransformResult::RgbImage(image) => {
-                Ok(resize(
-                    &image,
-                    self.image_size.width as u32,
-                    self.image_size.width as u32,
-                    FilterType::Triangle,
-                ).into())
-            },
+            ImageTransformResult::RgbImage(image) => Ok(resize(
+                &image,
+                self.image_size.width as u32,
+                self.image_size.width as u32,
+                FilterType::Triangle,
+            )
+            .into()),
             ImageTransformResult::Tensor(_) => Err("Image resize not implemented for Tensor"),
             ImageTransformResult::Array4(_) => Err("Image resize not implemented for Array4"),
         }
@@ -81,7 +80,7 @@ impl GenericTransform for ResizeRGBImage {
 
 pub struct MeanStdNormalization {
     pub means: [f32; 3],
-    pub stds: [f32; 3]
+    pub stds: [f32; 3],
 }
 
 impl GenericTransform for MeanStdNormalization {
@@ -90,9 +89,11 @@ impl GenericTransform for MeanStdNormalization {
             ImageTransformResult::RgbImage(_) => Err("Not implemented"),
             ImageTransformResult::Tensor(tensor) => Err("Not implemented"),
             ImageTransformResult::Array4(arr) => {
-                let mean = Array::from_shape_vec((1, 3, 1, 1), self.means.to_vec()).expect("Wrong conversion to array");
-                let std = Array::from_shape_vec((1, 3, 1, 1), self.stds.to_vec()).expect("Wrong conversion to array");
-                let new_arr = (arr - mean) / std;
+                let mean = Array::from_shape_vec((1, 3, 1, 1), self.means.to_vec())
+                    .expect("Wrong conversion to array");
+                let std = Array::from_shape_vec((1, 3, 1, 1), self.stds.to_vec())
+                    .expect("Wrong conversion to array");
+                let new_arr = (arr / 255.0 - mean) / std;
                 Ok(ImageTransformResult::Array4(new_arr))
             }
         }
@@ -100,7 +101,7 @@ impl GenericTransform for MeanStdNormalization {
 }
 
 pub struct Transpose {
-    pub axes: [usize; 4]
+    pub axes: [usize; 4],
 }
 
 impl GenericTransform for Transpose {
@@ -110,10 +111,12 @@ impl GenericTransform for Transpose {
             ImageTransformResult::Array4(arr) => {
                 let arr = arr.permuted_axes(self.axes);
                 Ok(ImageTransformResult::Array4(arr))
-            },
+            }
             ImageTransformResult::Tensor(tensor) => {
                 // note that the same operation on Tensor is not safe as it is on Array4
-                let tensor = tensor.permute_axes(&self.axes).expect("Transpose should match the shape of the tensor");
+                let tensor = tensor
+                    .permute_axes(&self.axes)
+                    .expect("Transpose should match the shape of the tensor");
                 Ok(ImageTransformResult::Tensor(tensor))
             }
         }
@@ -129,17 +132,16 @@ impl GenericTransform for ToTensor {
                 let shape = image.dimensions();
                 let tensor: Tensor = tract_ndarray::Array4::from_shape_fn(
                     (1 as usize, 3 as usize, shape.0 as usize, shape.1 as usize),
-                    |(_, c, y, x)| image[(x as _, y as _)][c] as f32
-                ).into();
+                    |(_, c, y, x)| image[(x as _, y as _)][c] as f32,
+                )
+                .into();
                 Ok(ImageTransformResult::Tensor(tensor))
             }
             ImageTransformResult::Tensor(tensor) => {
                 // already a tensor
                 Ok(ImageTransformResult::Tensor(tensor))
             }
-            ImageTransformResult::Array4(arr4) => {
-                Ok(ImageTransformResult::Tensor(arr4.into()))
-            }
+            ImageTransformResult::Array4(arr4) => Ok(ImageTransformResult::Tensor(arr4.into())),
         }
     }
 }
@@ -153,25 +155,26 @@ impl GenericTransform for ToArray {
                 let shape = image.dimensions();
                 let arr = tract_ndarray::Array4::from_shape_fn(
                     (1 as usize, 3 as usize, shape.0 as usize, shape.1 as usize),
-                    |(_, c, y, x)| image[(x as _, y as _)][c] as f32
+                    |(_, c, y, x)| image[(x as _, y as _)][c] as f32,
                 );
                 Ok(ImageTransformResult::Array4(arr))
             }
             ImageTransformResult::Tensor(tensor) => {
-                // already a tensor
-                let dyn_arr = tensor.into_array::<f32>().expect("Cannot convert tensor to Array4");
-
-                let arr4 = dyn_arr.into_dimensionality::<Ix4>().expect("Cannot convert dynamic Array to Array4");
+                let dyn_arr = tensor
+                    .into_array::<f32>()
+                    .expect("Cannot convert tensor to Array4");
+                let arr4 = dyn_arr
+                    .into_dimensionality::<Ix4>()
+                    .expect("Cannot convert dynamic Array to Array4");
                 Ok(ImageTransformResult::Array4(arr4))
             }
             ImageTransformResult::Array4(arr4) => {
+                // already an array
                 Ok(ImageTransformResult::Tensor(arr4.into()))
             }
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -181,17 +184,26 @@ mod tests {
 
     use super::*;
     use crate::image_transform::functions::read_rgb_image;
+    use tract_onnx::prelude::*;
 
     #[test]
     fn test_resize() {
         let pipeline = TransformationPipeline {
             steps: vec![
-                Box::new(ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
-                Box::new(ToTensor {})
-            ]
+                Box::new(ResizeRGBImage {
+                    image_size: ImageSize {
+                        width: 224,
+                        height: 224,
+                    },
+                    filter: FilterType::Nearest,
+                }),
+                Box::new(ToTensor {}),
+            ],
         };
         let image = read_rgb_image("images/cat.jpeg");
-        let result = pipeline.transform_image(image).expect("Cannot transform image");
+        let result = pipeline
+            .transform_image(&image)
+            .expect("Cannot transform image");
         assert_eq!(result.shape(), &[1, 3, 224, 224]);
     }
 
@@ -199,13 +211,73 @@ mod tests {
     fn test_resize_permute() {
         let pipeline = TransformationPipeline {
             steps: vec![
-                Box::new(ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
+                Box::new(ResizeRGBImage {
+                    image_size: ImageSize {
+                        width: 224,
+                        height: 224,
+                    },
+                    filter: FilterType::Nearest,
+                }),
                 Box::new(ToTensor {}),
-                Box::new(Transpose { axes: [0, 2, 3, 1] })
-            ]
+                Box::new(Transpose { axes: [0, 2, 3, 1] }),
+            ],
         };
         let image = read_rgb_image("images/cat.jpeg");
-        let result = pipeline.transform_image(image).expect("Cannot transform image");
+        let result = pipeline
+            .transform_image(&image)
+            .expect("Cannot transform image");
         assert_eq!(result.shape(), &[1, 224, 224, 3]);
+    }
+
+    #[test]
+    fn test_classification() {
+        let pipeline = TransformationPipeline {
+            steps: vec![
+                Box::new(ResizeRGBImage {
+                    image_size: ImageSize {
+                        width: 224,
+                        height: 224,
+                    },
+                    filter: FilterType::Nearest,
+                }),
+                Box::new(ToArray {}),
+                Box::new(MeanStdNormalization {
+                    means: [0.485, 0.456, 0.406],
+                    stds: [0.229, 0.224, 0.225],
+                }),
+                Box::new(ToTensor {}),
+            ],
+        };
+        let image = read_rgb_image("images/cat.jpeg");
+        let image_tensor = pipeline
+            .transform_image(&image)
+            .expect("Cannot transform image");
+
+        let model = tract_onnx::onnx()
+            .model_for_path("models/mobilenetv2-7.onnx".to_string())
+            .expect("Cannot read model")
+            .with_input_fact(
+                0,
+                InferenceFact::dt_shape(f32::datum_type(), tvec!(1, 3, 224, 224)),
+            )
+            .unwrap()
+            .into_optimized()
+            .unwrap()
+            .into_runnable()
+            .unwrap();
+
+        let result = model.run(tvec!(image_tensor)).unwrap();
+
+        // find and display the max value with its index
+        let best = result[0]
+            .to_array_view::<f32>()
+            .unwrap()
+            .iter()
+            .cloned()
+            .zip(2..)
+            .max_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+        // this is classified as a lynx which is close enough I guess
+        assert_eq!(best.unwrap().1, 287);
     }
 }

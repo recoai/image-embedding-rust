@@ -1,18 +1,7 @@
-use crate::image_transform::pipeline::{ImageSize, GenericTransform, ResizeRGBImage, ToTensor};
+use crate::image_transform::pipeline::{
+    GenericTransform, ImageSize, MeanStdNormalization, ResizeRGBImage, ToArray, ToTensor,
+};
 use image::imageops::FilterType;
-
-pub enum Normalization {
-    None,
-    MeanStd([f64; 3], [f64; 3]),
-    MinOnePlusOne,
-}
-
-pub enum ImageShape {
-    // Batch x Channel x Height x Width
-    BCHW,
-    // Batch x Height x Width x Channel
-    BHWC,
-}
 
 pub struct ModelConfig {
     pub model_name: String,
@@ -33,8 +22,10 @@ pub fn dispatch_model(model: Model) -> ModelConfig {
             model_name: "MobileNetV2".into(),
             model_url: "https://github.com/onnx/models/raw/master/vision/classification/mobilenet/model/mobilenetv2-7.onnx".into(),
             image_transformation: vec![
-                Box::new(ResizeRGBImage{ image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
-                Box::new(ToTensor {})
+                Box::new(ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
+                Box::new(ToArray {}),
+                Box::new(MeanStdNormalization {means: [0.485, 0.456, 0.406] , stds: [0.229, 0.224, 0.225]}),
+                Box::new(ToTensor {}),
             ],
             layer_name: "Reshape_103".to_string()
         },
