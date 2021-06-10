@@ -19,6 +19,25 @@ pub enum ImageTransformResult {
     Tensor(Tensor),
 }
 
+impl ImageTransformResult {
+    pub fn shape(&self) -> Vec<usize> {
+        match self {
+            ImageTransformResult::RgbImage(image) => {
+                let (width, height) = image.dimensions();
+                vec![width as usize, height as usize]
+            }
+            ImageTransformResult::Array4(array) => {
+                let shape: Vec<usize> = array.shape().iter().map(|v| v.clone() as usize).collect();
+                shape
+            }
+            ImageTransformResult::Tensor(tensor) => {
+                let shape: Vec<usize> = tensor.shape().iter().map(|v| v.clone() as usize).collect();
+                shape
+            }
+        }
+    }
+}
+
 impl From<RgbImage> for ImageTransformResult {
     fn from(rgb_image: RgbImage) -> Self {
         ImageTransformResult::RgbImage(rgb_image)
@@ -78,22 +97,27 @@ impl GenericTransform for ResizeRGBImage {
     }
 }
 
-pub struct MeanStdNormalization {
-    pub means: [f32; 3],
-    pub stds: [f32; 3],
+pub struct Normalization {
+    pub sub: [f32; 3],
+    pub div: [f32; 3],
+    pub zeroone: bool,
 }
 
-impl GenericTransform for MeanStdNormalization {
+impl GenericTransform for Normalization {
     fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str> {
         match input {
             ImageTransformResult::RgbImage(_) => Err("Not implemented"),
             ImageTransformResult::Tensor(tensor) => Err("Not implemented"),
             ImageTransformResult::Array4(arr) => {
-                let mean = Array::from_shape_vec((1, 3, 1, 1), self.means.to_vec())
+                let sub = Array::from_shape_vec((1, 3, 1, 1), self.sub.to_vec())
                     .expect("Wrong conversion to array");
-                let std = Array::from_shape_vec((1, 3, 1, 1), self.stds.to_vec())
+                let div = Array::from_shape_vec((1, 3, 1, 1), self.div.to_vec())
                     .expect("Wrong conversion to array");
-                let new_arr = (arr / 255.0 - mean) / std;
+                let new_arr = if self.zeroone {
+                    (arr / 255.0 - sub) / div
+                } else {
+                    (arr - sub) / div
+                };
                 Ok(ImageTransformResult::Array4(new_arr))
             }
         }
@@ -176,6 +200,10 @@ impl GenericTransform for ToArray {
     }
 }
 
+pub struct CenterCrop {
+    pub crop_size: ImageSize,
+}
+
 #[cfg(test)]
 mod tests {
     use image::imageops::FilterType;
@@ -241,9 +269,10 @@ mod tests {
                     filter: FilterType::Nearest,
                 }),
                 Box::new(ToArray {}),
-                Box::new(MeanStdNormalization {
-                    means: [0.485, 0.456, 0.406],
-                    stds: [0.229, 0.224, 0.225],
+                Box::new(Normalization {
+                    sub: [0.485, 0.456, 0.406],
+                    div: [0.229, 0.224, 0.225],
+                    zeroone: true,
                 }),
                 Box::new(ToTensor {}),
             ],
