@@ -2,7 +2,7 @@ use std::error::Error;
 
 use crate::image_transform::functions::image_to_tensor;
 use crate::image_transform::pipeline::tract_ndarray::Ix4;
-use image::imageops::{resize, FilterType};
+use image::imageops::{crop, resize, FilterType};
 use image::{ImageBuffer, Rgb, RgbImage};
 use tract_onnx::prelude::tract_ndarray::Array4;
 use tract_onnx::prelude::{tract_ndarray, Tensor};
@@ -60,6 +60,7 @@ impl TransformationPipeline {
 
         for step in &self.steps {
             result = step.transform(result)?;
+            // println!("Shape {:?}", result.shape());
         }
 
         let to_tensor = ToTensor {};
@@ -91,6 +92,65 @@ impl GenericTransform for ResizeRGBImage {
                 FilterType::Triangle,
             )
             .into()),
+            ImageTransformResult::Tensor(_) => Err("Image resize not implemented for Tensor"),
+            ImageTransformResult::Array4(_) => Err("Image resize not implemented for Array4"),
+        }
+    }
+}
+
+// Resizes the image to a size but keeps the aspect ratio
+pub struct ResizeRGBImageAspectRatio {
+    pub image_size: ImageSize,
+    pub scale: f32,
+    pub filter: FilterType,
+}
+
+impl GenericTransform for ResizeRGBImageAspectRatio {
+    fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str> {
+        match input {
+            ImageTransformResult::RgbImage(image) => {
+                let (height, width) = image.dimensions();
+                let height = height as f32;
+                let width = height as f32;
+                let new_height = 100.0 * (self.image_size.height as f32) / self.scale;
+                let new_width = 100.0 * (self.image_size.width as f32) / self.scale;
+
+                let (final_height, final_width) = if (height > width) {
+                    (new_width, new_height * height / width)
+                } else {
+                    (new_width * width / height, new_width)
+                };
+
+                Ok(resize(&image, final_width as u32, final_height as u32, self.filter).into())
+            }
+            ImageTransformResult::Tensor(_) => Err("Image resize not implemented for Tensor"),
+            ImageTransformResult::Array4(_) => Err("Image resize not implemented for Array4"),
+        }
+    }
+}
+
+// Resizes the image to a size but keeps the aspect ratio
+pub struct CenterCrop {
+    pub crop_size: ImageSize,
+}
+
+impl GenericTransform for CenterCrop {
+    fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str> {
+        match input {
+            ImageTransformResult::RgbImage(image) => {
+                let (height, width) = image.dimensions();
+                let left = (width - self.crop_size.width as u32) / 2;
+                let top = (height - self.crop_size.height as u32) / 2;
+                let mut image_cropped = image.clone();
+                let image_cropped_new = crop(
+                    &mut image_cropped,
+                    top as u32,
+                    left as u32,
+                    self.crop_size.width as u32,
+                    self.crop_size.height as u32,
+                );
+                Ok(image_cropped_new.to_image().into())
+            }
             ImageTransformResult::Tensor(_) => Err("Image resize not implemented for Tensor"),
             ImageTransformResult::Array4(_) => Err("Image resize not implemented for Array4"),
         }
@@ -198,10 +258,6 @@ impl GenericTransform for ToArray {
             }
         }
     }
-}
-
-pub struct CenterCrop {
-    pub crop_size: ImageSize,
 }
 
 #[cfg(test)]

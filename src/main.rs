@@ -11,10 +11,8 @@ use tract_onnx::prelude::*;
 mod image_transform;
 mod models;
 
-fn test_imagenet() {}
-
 fn main() -> Result<(), String> {
-    let mut config = load_model_config(ModelArchitecture::ResNet152);
+    let mut config = load_model_config(ModelArchitecture::SqueezeNet);
     // set layer to None to treat this as a normal prediction
     config.layer_name = None;
     let model = LoadedModel::new_from_config(config);
