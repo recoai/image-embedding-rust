@@ -1,9 +1,6 @@
-use std::error::Error;
-
-use crate::image_transform::functions::image_to_tensor;
 use crate::image_transform::pipeline::tract_ndarray::Ix4;
 use image::imageops::{crop, resize, FilterType};
-use image::{ImageBuffer, Rgb, RgbImage};
+use image::RgbImage;
 use tract_onnx::prelude::tract_ndarray::Array4;
 use tract_onnx::prelude::{tract_ndarray, Tensor};
 use tract_onnx::tract_core::ndarray::Array;
@@ -111,11 +108,11 @@ impl GenericTransform for ResizeRGBImageAspectRatio {
             ImageTransformResult::RgbImage(image) => {
                 let (height, width) = image.dimensions();
                 let height = height as f32;
-                let width = height as f32;
+                let width = width as f32;
                 let new_height = 100.0 * (self.image_size.height as f32) / self.scale;
                 let new_width = 100.0 * (self.image_size.width as f32) / self.scale;
 
-                let (final_height, final_width) = if (height > width) {
+                let (final_height, final_width) = if height > width {
                     (new_width, new_height * height / width)
                 } else {
                     (new_width * width / height, new_width)
@@ -167,7 +164,7 @@ impl GenericTransform for Normalization {
     fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str> {
         match input {
             ImageTransformResult::RgbImage(_) => Err("Not implemented"),
-            ImageTransformResult::Tensor(tensor) => Err("Not implemented"),
+            ImageTransformResult::Tensor(_) => Err("Not implemented"),
             ImageTransformResult::Array4(arr) => {
                 let sub = Array::from_shape_vec((1, 3, 1, 1), self.sub.to_vec())
                     .expect("Wrong conversion to array");

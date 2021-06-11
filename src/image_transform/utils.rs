@@ -27,7 +27,7 @@ pub fn save_file_get(url: &str, path: &str) -> Result<(), String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let mut response = client.get(url).send().map_err(|e| e.to_string())?;
+    let response = client.get(url).send().map_err(|e| e.to_string())?;
 
     let status = response.status();
     if !status.is_success() {

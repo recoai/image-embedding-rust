@@ -2,8 +2,6 @@ use crate::image_transform::architectures::load_model_config;
 use crate::image_transform::functions::read_rgb_image;
 use crate::models::{LoadedModel, ModelArchitecture};
 use glob::glob;
-use std::collections::HashMap;
-use std::fs;
 use std::str::FromStr;
 use std::time::Instant;
 use tract_onnx::prelude::*;
@@ -12,7 +10,7 @@ mod image_transform;
 mod models;
 
 fn main() -> Result<(), String> {
-    let mut config = load_model_config(ModelArchitecture::SqueezeNet);
+    let mut config = load_model_config(ModelArchitecture::ResNet152);
     // set layer to None to treat this as a normal prediction
     config.layer_name = None;
     let model = LoadedModel::new_from_config(config);
