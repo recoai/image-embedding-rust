@@ -1,10 +1,12 @@
 use crate::image_transform::pipeline::tract_ndarray::Ix4;
+use enum_dispatch::enum_dispatch;
 use image::imageops::{crop, resize, FilterType};
 use image::RgbImage;
 use tract_onnx::prelude::tract_ndarray::Array4;
 use tract_onnx::prelude::{tract_ndarray, Tensor};
 use tract_onnx::tract_core::ndarray::Array;
 
+#[derive(Clone)]
 pub struct ImageSize {
     pub width: usize,
     pub height: usize,
@@ -14,6 +16,18 @@ pub enum ImageTransformResult {
     RgbImage(RgbImage),
     Array4(Array4<f32>),
     Tensor(Tensor),
+}
+
+#[enum_dispatch]
+#[derive(Clone)]
+pub enum ImageTransform {
+    ResizeRGBImage(ResizeRGBImage),
+    ResizeRGBImageAspectRatio(ResizeRGBImageAspectRatio),
+    CenterCrop(CenterCrop),
+    Normalization(Normalization),
+    Transpose(Transpose),
+    ToArray(ToArray),
+    ToTensor(ToTensor),
 }
 
 impl ImageTransformResult {
@@ -47,8 +61,9 @@ impl From<Tensor> for ImageTransformResult {
     }
 }
 
+#[derive(Clone)]
 pub struct TransformationPipeline {
-    pub steps: Vec<Box<dyn GenericTransform>>,
+    pub steps: Vec<ImageTransform>,
 }
 
 impl TransformationPipeline {
@@ -70,10 +85,12 @@ impl TransformationPipeline {
     }
 }
 
+#[enum_dispatch(ImageTransform)]
 pub trait GenericTransform {
     fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str>;
 }
 
+#[derive(Clone)]
 pub struct ResizeRGBImage {
     pub image_size: ImageSize,
     pub filter: FilterType,
@@ -96,6 +113,7 @@ impl GenericTransform for ResizeRGBImage {
 }
 
 // Resizes the image to a size but keeps the aspect ratio
+#[derive(Clone)]
 pub struct ResizeRGBImageAspectRatio {
     pub image_size: ImageSize,
     pub scale: f32,
@@ -127,6 +145,7 @@ impl GenericTransform for ResizeRGBImageAspectRatio {
 }
 
 // Resizes the image to a size but keeps the aspect ratio
+#[derive(Clone)]
 pub struct CenterCrop {
     pub crop_size: ImageSize,
 }
@@ -154,6 +173,7 @@ impl GenericTransform for CenterCrop {
     }
 }
 
+#[derive(Clone)]
 pub struct Normalization {
     pub sub: [f32; 3],
     pub div: [f32; 3],
@@ -181,6 +201,7 @@ impl GenericTransform for Normalization {
     }
 }
 
+#[derive(Clone)]
 pub struct Transpose {
     pub axes: [usize; 4],
 }
@@ -204,6 +225,7 @@ impl GenericTransform for Transpose {
     }
 }
 
+#[derive(Clone)]
 pub struct ToTensor {}
 
 impl GenericTransform for ToTensor {
@@ -227,6 +249,7 @@ impl GenericTransform for ToTensor {
     }
 }
 
+#[derive(Clone)]
 pub struct ToArray {}
 
 impl GenericTransform for ToArray {
@@ -271,14 +294,15 @@ mod tests {
     fn test_resize() {
         let pipeline = TransformationPipeline {
             steps: vec![
-                Box::new(ResizeRGBImage {
+                ResizeRGBImage {
                     image_size: ImageSize {
                         width: 224,
                         height: 224,
                     },
                     filter: FilterType::Nearest,
-                }),
-                Box::new(ToTensor {}),
+                }
+                .into(),
+                ToTensor {}.into(),
             ],
         };
         let image = read_rgb_image("images/cat.jpeg");
@@ -292,15 +316,16 @@ mod tests {
     fn test_resize_permute() {
         let pipeline = TransformationPipeline {
             steps: vec![
-                Box::new(ResizeRGBImage {
+                ResizeRGBImage {
                     image_size: ImageSize {
                         width: 224,
                         height: 224,
                     },
                     filter: FilterType::Nearest,
-                }),
-                Box::new(ToTensor {}),
-                Box::new(Transpose { axes: [0, 2, 3, 1] }),
+                }
+                .into(),
+                ToTensor {}.into(),
+                Transpose { axes: [0, 2, 3, 1] }.into(),
             ],
         };
         let image = read_rgb_image("images/cat.jpeg");
@@ -314,20 +339,22 @@ mod tests {
     fn test_classification() {
         let pipeline = TransformationPipeline {
             steps: vec![
-                Box::new(ResizeRGBImage {
+                ResizeRGBImage {
                     image_size: ImageSize {
                         width: 224,
                         height: 224,
                     },
                     filter: FilterType::Nearest,
-                }),
-                Box::new(ToArray {}),
-                Box::new(Normalization {
+                }
+                .into(),
+                ToArray {}.into(),
+                Normalization {
                     sub: [0.485, 0.456, 0.406],
                     div: [0.229, 0.224, 0.225],
                     zeroone: true,
-                }),
-                Box::new(ToTensor {}),
+                }
+                .into(),
+                ToTensor {}.into(),
             ],
         };
         let image = read_rgb_image("images/cat.jpeg");

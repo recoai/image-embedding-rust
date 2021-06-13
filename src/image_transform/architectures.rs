@@ -1,8 +1,8 @@
+use crate::image_transform::models::{Channels, ModelArchitecture, ModelConfig};
 use crate::image_transform::pipeline::{
     CenterCrop, ImageSize, Normalization, ResizeRGBImage, ResizeRGBImageAspectRatio, ToArray,
     ToTensor, TransformationPipeline, Transpose,
 };
-use crate::models::{Channels, ModelArchitecture, ModelConfig};
 use image::imageops::FilterType;
 
 pub fn load_model_config(model: ModelArchitecture) -> ModelConfig {
@@ -13,11 +13,11 @@ pub fn load_model_config(model: ModelArchitecture) -> ModelConfig {
             model_url: "https://github.com/onnx/models/raw/master/vision/classification/squeezenet/model/squeezenet1.1-7.onnx".into(),
             image_transformation: TransformationPipeline {
                 steps: vec![
-                    Box::new(ResizeRGBImageAspectRatio { image_size: ImageSize { width: 224, height: 224 }, scale: 87.5, filter: FilterType::Nearest }),
-                    Box::new(CenterCrop { crop_size: ImageSize {width: 224, height: 224} }),
-                    Box::new(ToArray {}),
-                    Box::new(Normalization { sub: [0.485, 0.456, 0.406], div: [0.229, 0.224, 0.225], zeroone: true }),
-                    Box::new(ToTensor {}),
+                    ResizeRGBImageAspectRatio { image_size: ImageSize { width: 224, height: 224 }, scale: 87.5, filter: FilterType::Nearest }.into(),
+                    CenterCrop { crop_size: ImageSize {width: 224, height: 224} }.into(),
+                    ToArray {}.into(),
+                    Normalization { sub: [0.485, 0.456, 0.406], div: [0.229, 0.224, 0.225], zeroone: true }.into(),
+                    ToTensor {}.into(),
                 ]
             },
             image_size: ImageSize { width: 224, height: 224 },
@@ -30,10 +30,10 @@ pub fn load_model_config(model: ModelArchitecture) -> ModelConfig {
             model_url: "https://github.com/onnx/models/raw/master/vision/classification/mobilenet/model/mobilenetv2-7.onnx".into(),
             image_transformation: TransformationPipeline {
                 steps: vec![
-                    Box::new(ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }),
-                    Box::new(ToArray {}),
-                    Box::new(Normalization { sub: [0.485, 0.456, 0.406], div: [0.229, 0.224, 0.225], zeroone: true }),
-                    Box::new(ToTensor {}),
+                    ResizeRGBImage { image_size: ImageSize { width: 224, height: 224 }, filter: FilterType::Nearest }.into(),
+                    ToArray {}.into(),
+                    Normalization { sub: [0.485, 0.456, 0.406], div: [0.229, 0.224, 0.225], zeroone: true }.into(),
+                    ToTensor {}.into(),
                 ]
             },
             image_size: ImageSize { width: 224, height: 224 },
@@ -46,11 +46,11 @@ pub fn load_model_config(model: ModelArchitecture) -> ModelConfig {
             model_url: "https://github.com/onnx/models/raw/master/vision/classification/resnet/model/resnet152-v2-7.onnx".to_string(),
             image_transformation: TransformationPipeline {
                 steps: vec![
-                    Box::new(ResizeRGBImageAspectRatio { image_size: ImageSize { width: 224, height: 224 }, scale: 87.5, filter: FilterType::Nearest }),
-                    Box::new(CenterCrop { crop_size: ImageSize {width: 224, height: 224} }),
-                    Box::new(ToArray {}),
-                    Box::new(Normalization { sub: [0.485, 0.456, 0.406], div: [0.229, 0.224, 0.225], zeroone: true }),
-                    Box::new(ToTensor {}),
+                    ResizeRGBImageAspectRatio { image_size: ImageSize { width: 224, height: 224 }, scale: 87.5, filter: FilterType::Nearest }.into(),
+                    CenterCrop { crop_size: ImageSize {width: 224, height: 224} }.into(),
+                    ToArray {}.into(),
+                    Normalization { sub: [0.485, 0.456, 0.406], div: [0.229, 0.224, 0.225], zeroone: true }.into(),
+                    ToTensor {}.into(),
                 ]
             },
             image_size: ImageSize { width: 224, height: 224 },
@@ -63,12 +63,12 @@ pub fn load_model_config(model: ModelArchitecture) -> ModelConfig {
             model_url: "https://github.com/onnx/models/raw/master/vision/classification/efficientnet-lite4/model/efficientnet-lite4-11.onnx".to_string(),
             image_transformation: TransformationPipeline {
                 steps: vec![
-                    Box::new(ResizeRGBImageAspectRatio { image_size: ImageSize { width: 224, height: 224 }, scale: 87.5, filter: FilterType::Nearest }),
-                    Box::new(CenterCrop { crop_size: ImageSize {width: 224, height: 224} }),
-                    Box::new(ToArray {}),
-                    Box::new(Normalization { sub: [127.0, 127.0, 127.0], div: [128.0, 128.0, 128.0], zeroone: false }),
-                    Box::new(ToTensor {}),
-                    Box::new(Transpose { axes: [0, 2, 3, 1] }),
+                    ResizeRGBImageAspectRatio { image_size: ImageSize { width: 224, height: 224 }, scale: 87.5, filter: FilterType::Nearest }.into(),
+                    CenterCrop { crop_size: ImageSize {width: 224, height: 224} }.into(),
+                    ToArray {}.into(),
+                    Normalization { sub: [127.0, 127.0, 127.0], div: [128.0, 128.0, 128.0], zeroone: false }.into(),
+                    ToTensor {}.into(),
+                    Transpose { axes: [0, 2, 3, 1] }.into(),
                 ]
             },
             image_size: ImageSize { width: 224, height: 224 },

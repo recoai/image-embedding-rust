@@ -1,13 +1,14 @@
 use crate::image_transform::architectures::load_model_config;
 use crate::image_transform::functions::read_rgb_image;
-use crate::models::{LoadedModel, ModelArchitecture};
+use crate::image_transform::models::{LoadedModel, ModelArchitecture};
 use glob::glob;
 use std::str::FromStr;
 use std::time::Instant;
 use tract_onnx::prelude::*;
 
 mod image_transform;
-mod models;
+mod index;
+mod state;
 
 fn main() -> Result<(), String> {
     let mut config = load_model_config(ModelArchitecture::ResNet152);

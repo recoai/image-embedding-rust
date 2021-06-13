@@ -1,5 +1,9 @@
+use bytes::Bytes;
+use image::io::Reader as ImageReader;
+use image::RgbImage;
+use std::error::Error;
 use std::fs;
-use std::io::Write;
+use std::io::{Cursor, Write};
 use std::path::Path;
 
 pub fn remove_non_alphanum(s: &String) -> String {
@@ -46,4 +50,18 @@ pub fn save_file_get(url: &str, path: &str) -> Result<(), String> {
     out.write_all(&response.bytes().expect("Failed to convert to bytes"));
 
     Ok(())
+}
+
+pub fn read_bytes_url(url: &str) -> reqwest::Result<Bytes> {
+    let client = reqwest::blocking::Client::builder()
+        .referer(false)
+        .build()
+        .map_err(|e| e)?;
+    let response = client.get(url).send().map_err(|e| e)?;
+    response.bytes()
+}
+
+pub fn image_from_bytes(bytes: Bytes) -> Result<RgbImage, Box<dyn Error>> {
+    let img2 = ImageReader::new(Cursor::new(bytes)).decode()?;
+    Ok(img2.into_rgb8())
 }

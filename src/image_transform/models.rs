@@ -10,11 +10,13 @@ use image::RgbImage;
 pub type TractSimplePlan =
     SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>;
 
+#[derive(Clone)]
 pub enum Channels {
     CWH,
     WHC,
 }
 
+#[derive(Clone)]
 pub struct ModelConfig {
     pub model_name: String,
     pub model_url: String,
@@ -24,6 +26,7 @@ pub struct ModelConfig {
     pub channels: Channels,
 }
 
+#[derive(Clone)]
 pub struct LoadedModel {
     pub config: ModelConfig,
     pub model: TractSimplePlan,
@@ -92,6 +95,7 @@ impl LoadedModel {
     }
 }
 
+#[derive(Clone)]
 pub enum ModelArchitecture {
     SqueezeNet,
     MobileNetV2,
