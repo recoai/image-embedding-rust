@@ -1,23 +1,22 @@
-use std::path::Path;
-
-use tract_onnx::prelude::*;
-
 use crate::image_transform::architectures::load_model_config;
 use crate::image_transform::pipeline::{ImageSize, TransformationPipeline};
 use crate::image_transform::utils::{model_filename, save_file_get};
 use image::RgbImage;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
+use tract_onnx::prelude::*;
 
 pub type TractSimplePlan =
     SimplePlan<TypedFact, Box<dyn TypedOp>, Graph<TypedFact, Box<dyn TypedOp>>>;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
 pub enum Channels {
     CWH,
     WHC,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ModelConfig {
     pub model_name: String,
     pub model_url: String,
@@ -96,7 +95,7 @@ impl LoadedModel {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
 pub enum ModelArchitecture {
     SqueezeNet,
     MobileNetV2,

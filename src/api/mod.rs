@@ -5,14 +5,6 @@ use crate::state::app::EmbeddingApp;
 use actix_web::web::Data;
 use actix_web::{get, post, web, App, HttpRequest, HttpServer, Responder};
 
-// #[derive(Clone)]
-// pub enum Event {
-//     AddImage(AddImage),
-//     RemoveImage(DeleteImage),
-//     UpsertCollection(UpsertCollection),
-//     DeleteCollection(DeleteImage),
-// }
-
 #[post("/add_image")]
 async fn add_image(state: web::Data<EmbeddingApp>, add_image: web::Json<AddImage>) -> String {
     state.add_image(add_image.into_inner());

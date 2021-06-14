@@ -4,10 +4,11 @@ use crate::image_transform::models::{
 use crate::image_transform::utils::{image_from_bytes, read_bytes_url};
 use crate::index::db::VectorIndex;
 use crate::index::events::{
-    AddImage, ImageBytes, ImageSource, RemoveImage, SearchImage, UpsertCollection,
+    AddImage, ImageBytes, ImageSource, RemoveCollection, RemoveImage, SearchImage, UpsertCollection,
 };
 use crate::state::work_queue::WorkQueue;
 use image::{ImageBuffer, Rgb, RgbImage};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::error::Error;
@@ -24,19 +25,19 @@ pub enum Job {
     AddImage(AddImage),
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SingleImageResult {
     pub id: String,
     pub similarity: u32,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ImageResult {
     pub collection_name: String,
     pub results: Vec<SingleImageResult>,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, JsonSchema)]
 pub enum GenericModelConfig {
     ModelConfig(ModelConfig),
     ModelArchitecture(ModelArchitecture),
@@ -96,6 +97,11 @@ impl EmbeddingApp {
             let collection = Collection::new(&upsert_collection.name, &upsert_collection.config);
             collections.insert(upsert_collection.name.clone(), collection);
         }
+    }
+
+    pub fn remove_collection(&self, remove_collection: &RemoveCollection) {
+        let mut collections = self.collections.write().unwrap();
+        collections.remove(&remove_collection.name.clone());
     }
 
     pub fn add_image(&self, add_image: AddImage) -> Result<(), Box<dyn Error>> {
