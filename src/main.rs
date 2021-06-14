@@ -1,16 +1,56 @@
 use crate::image_transform::architectures::load_model_config;
 use crate::image_transform::functions::read_rgb_image;
 use crate::image_transform::models::{LoadedModel, ModelArchitecture};
+use crate::index::events::{AddImage, ImageSource, UpsertCollection};
+use crate::state::app::{EmbeddingApp, GenericModelConfig};
 use glob::glob;
+use reqwest::Url;
 use std::str::FromStr;
 use std::time::Instant;
 use tract_onnx::prelude::*;
 
+mod api;
 mod image_transform;
 mod index;
 mod state;
 
-fn main() -> Result<(), String> {
+fn main() {
+    let app = EmbeddingApp::new(4);
+    let handles = app.start_workers();
+
+    app.upsert_collection(&UpsertCollection {
+        name: "images".to_string(),
+        config: GenericModelConfig::ModelArchitecture(ModelArchitecture::MobileNetV2),
+    });
+
+    app.add_image(AddImage{
+        source: ImageSource::Url(Url::from_str("https://raw.githubusercontent.com/EliSchwartz/imagenet-sample-images/master/n01443537_goldfish.JPEG").unwrap()),
+        collection_name: "images".into(),
+        id: "goldfish".into()
+    });
+
+    app.add_image(AddImage{
+        source: ImageSource::Url(Url::from_str("https://raw.githubusercontent.com/EliSchwartz/imagenet-sample-images/master/n01491361_tiger_shark.JPEG").unwrap()),
+        collection_name: "images".into(),
+        id: "shark".into()
+    });
+
+    app.add_image(AddImage{
+        source: ImageSource::Url(Url::from_str("https://raw.githubusercontent.com/EliSchwartz/imagenet-sample-images/master/n01496331_electric_ray.JPEG").unwrap()),
+        collection_name: "images".into(),
+        id: "ray".into()
+    });
+
+    app.add_image(AddImage{
+        source: ImageSource::Url(Url::from_str("https://raw.githubusercontent.com/EliSchwartz/imagenet-sample-images/master/n01622779_great_grey_owl.JPEG").unwrap()),
+        collection_name: "images".into(),
+        id: "owl".into()
+    });
+
+    handles.into_iter().map(|t| t.join().unwrap()).count();
+}
+
+fn imagenet_test() -> Result<(), String> {
     let mut config = load_model_config(ModelArchitecture::ResNet152);
     // set layer to None to treat this as a normal prediction
     config.layer_name = None;

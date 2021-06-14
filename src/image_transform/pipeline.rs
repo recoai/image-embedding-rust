@@ -2,11 +2,13 @@ use crate::image_transform::pipeline::tract_ndarray::Ix4;
 use enum_dispatch::enum_dispatch;
 use image::imageops::{crop, resize, FilterType};
 use image::RgbImage;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, DisplayFromStr};
 use tract_onnx::prelude::tract_ndarray::Array4;
 use tract_onnx::prelude::{tract_ndarray, Tensor};
 use tract_onnx::tract_core::ndarray::Array;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ImageSize {
     pub width: usize,
     pub height: usize,
@@ -19,7 +21,7 @@ pub enum ImageTransformResult {
 }
 
 #[enum_dispatch]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum ImageTransform {
     ResizeRGBImage(ResizeRGBImage),
     ResizeRGBImageAspectRatio(ResizeRGBImageAspectRatio),
@@ -61,7 +63,7 @@ impl From<Tensor> for ImageTransformResult {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TransformationPipeline {
     pub steps: Vec<ImageTransform>,
 }
@@ -90,10 +92,22 @@ pub trait GenericTransform {
     fn transform(&self, input: ImageTransformResult) -> Result<ImageTransformResult, &'static str>;
 }
 
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ResizeRGBImage {
     pub image_size: ImageSize,
+    #[serde(with = "FilterOption")]
     pub filter: FilterType,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "FilterType")]
+pub enum FilterOption {
+    Nearest,
+    Triangle,
+    CatmullRom,
+    Gaussian,
+    Lanczos3,
 }
 
 impl GenericTransform for ResizeRGBImage {
@@ -113,10 +127,11 @@ impl GenericTransform for ResizeRGBImage {
 }
 
 // Resizes the image to a size but keeps the aspect ratio
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ResizeRGBImageAspectRatio {
     pub image_size: ImageSize,
     pub scale: f32,
+    #[serde(with = "FilterOption")]
     pub filter: FilterType,
 }
 
@@ -145,7 +160,7 @@ impl GenericTransform for ResizeRGBImageAspectRatio {
 }
 
 // Resizes the image to a size but keeps the aspect ratio
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CenterCrop {
     pub crop_size: ImageSize,
 }
@@ -173,7 +188,7 @@ impl GenericTransform for CenterCrop {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Normalization {
     pub sub: [f32; 3],
     pub div: [f32; 3],
@@ -201,7 +216,7 @@ impl GenericTransform for Normalization {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Transpose {
     pub axes: [usize; 4],
 }
@@ -225,7 +240,7 @@ impl GenericTransform for Transpose {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ToTensor {}
 
 impl GenericTransform for ToTensor {
@@ -249,7 +264,7 @@ impl GenericTransform for ToTensor {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ToArray {}
 
 impl GenericTransform for ToArray {
