@@ -3,7 +3,7 @@ pub mod http_server;
 use crate::index::events::{AddImage, RemoveImage, SearchImage};
 use crate::state::app::EmbeddingApp;
 use actix_web::web::Data;
-use actix_web::{get, post, web, App, HttpRequest, HttpServer, Responder};
+use actix_web::{post, web, App, HttpServer};
 
 #[post("/add_image")]
 async fn add_image(state: web::Data<EmbeddingApp>, add_image: web::Json<AddImage>) -> String {
